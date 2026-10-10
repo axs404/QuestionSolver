@@ -47,7 +47,7 @@ except ImportError as exc:
 
 matplotlib.rcParams["mathtext.fontset"] = os.environ.get("MATH_FONTSET", "dejavusans")
 
-MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
 HOTKEY = os.environ.get("HOTKEY", "<ctrl>+<alt>+g")
 QUIT_HOTKEY = os.environ.get("QUIT_HOTKEY", "<ctrl>+<alt>+x")
 
