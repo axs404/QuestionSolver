@@ -32,7 +32,6 @@ import sys
 import threading
 import tkinter as tk
 from tkinter import font as tkfont
-from tkinter import ttk
 
 try:
     import matplotlib
@@ -53,15 +52,15 @@ MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
 HOTKEY = os.environ.get("HOTKEY", "<ctrl>+<alt>+g")
 QUIT_HOTKEY = os.environ.get("QUIT_HOTKEY", "<ctrl>+<alt>+x")
 
-PROMPT = (
-    "The image is a screenshot containing a question (possibly with answer options, "
-    "code or equations). Read it carefully and answer it. Give the answer first, then "
-    "a SHORT explanation (a few sentences at most). Use Markdown for formatting. Write ALL math in LaTeX: "
-    "$...$ for inline and $$...$$ on their own lines for display equations. Use only "
-    "basic commands (\\frac, \\sqrt, ^, _, \\sum, \\int, \\lim, Greek letters, "
-    "\\left( \\right), \\mathbb, \\mathrm). Do NOT use matrix/cases/array environments; "
-    "for those, use a code block with plain text instead."
-)
+# PROMPT = (
+#     "The image is a screenshot containing a question (possibly with answer options, "
+#     "code or equations). Read it carefully and answer it. Give the answer first, then "
+#     "a SHORT explanation (a few sentences at most). Use Markdown for formatting. Write ALL math in LaTeX: "
+#     "$...$ for inline and $$...$$ on their own lines for display equations. Use only "
+#     "basic commands (\\frac, \\sqrt, ^, _, \\sum, \\int, \\lim, Greek letters, "
+#     "\\left( \\right), \\mathbb, \\mathrm). Do NOT use matrix/cases/array environments; "
+#     "for those, use a code block with plain text instead."
+# )
 
 
 # --------------------------------------------------------------------------- #
@@ -174,7 +173,7 @@ def prepare_image(image):
 def _configs():
     """Try a low 'thinking' level first (much faster); fall back to defaults if
     the model rejects it. Set THINKING=default to skip, or THINKING=high etc."""
-    level = os.environ.get("THINKING", "low").strip().lower()
+    level = os.environ.get("THINKING", "MINIMAL").strip().lower()
     out = []
     if level not in ("", "default"):
         try:
@@ -193,7 +192,7 @@ def stream_gemini(image):
     for cfg in _configs():
         got_text = False
         try:
-            kwargs = {"model": MODEL, "contents": [part, PROMPT]}
+            kwargs = {"model": MODEL, "contents": [part]}
             if cfg is not None:
                 kwargs["config"] = cfg
             for chunk in client.models.generate_content_stream(**kwargs):
@@ -303,6 +302,12 @@ def split_blocks(md):
 # --------------------------------------------------------------------------- #
 # Step 3: display with formatting (Markdown + LaTeX) in a Tk Text widget
 # --------------------------------------------------------------------------- #
+RESULT_BG = "#1e1e1e"
+RESULT_SURFACE = "#252526"
+RESULT_CONTROL = "#333337"
+RESULT_FG = "#d4d4d4"
+RESULT_MUTED = "#9da5b4"
+
 INLINE = re.compile(
     r"(\*\*\*.+?\*\*\*"                                   # bold italic
     r"|\*\*.+?\*\*"                                       # bold
@@ -317,7 +322,8 @@ INLINE = re.compile(
 class MarkdownText(tk.Text):
     def __init__(self, master, **kw):
         super().__init__(master, wrap="word", padx=16, pady=12, borderwidth=0,
-                         highlightthickness=0, bg="#ffffff", fg="#1f2328",
+                         highlightthickness=0, bg=RESULT_BG, fg=RESULT_FG,
+                         selectbackground="#264f78", selectforeground="#ffffff",
                          spacing1=2, spacing3=4, **kw)
         self.dpi = max(72.0, min(200.0, float(master.winfo_fpixels("1i"))))
         self._math_cache = {}
@@ -337,12 +343,13 @@ class MarkdownText(tk.Text):
         self.tag_configure("bold", font=self.f_bold)
         self.tag_configure("italic", font=self.f_ital)
         self.tag_configure("bolditalic", font=self.f_bi)
-        self.tag_configure("code", font=self.f_mono, background="#eef0f3", foreground="#b3261e")
-        self.tag_configure("codeblock", font=self.f_mono, background="#f3f4f6",
+        self.tag_configure("code", font=self.f_mono, background=RESULT_CONTROL,
+                           foreground="#ce9178")
+        self.tag_configure("codeblock", font=self.f_mono, background=RESULT_SURFACE,
                            lmargin1=16, lmargin2=16, rmargin=16, spacing1=0, spacing3=0)
         self.tag_configure("table", font=self.f_mono, lmargin1=8, lmargin2=8)
-        self.tag_configure("quote", foreground="#57606a", lmargin1=18, lmargin2=18)
-        self.tag_configure("hr", foreground="#aaaaaa")
+        self.tag_configure("quote", foreground=RESULT_MUTED, lmargin1=18, lmargin2=18)
+        self.tag_configure("hr", foreground="#6e7681")
         self.tag_configure("center", justify="center")
         for lvl in (1, 2, 3):
             self.tag_configure(f"h{lvl}", font=self.f_h[lvl], spacing1=10, spacing3=6)
@@ -355,7 +362,7 @@ class MarkdownText(tk.Text):
         if key not in self._math_cache:
             fig = Figure(dpi=self.dpi)
             FigureCanvasAgg(fig)
-            fig.text(0, 0, f"${tex}$", fontsize=15 if display else 12, color="#1f2328")
+            fig.text(0, 0, f"${tex}$", fontsize=15 if display else 12, color=RESULT_FG)
             buf = io.BytesIO()
             fig.savefig(buf, format="png", dpi=self.dpi, transparent=True,
                         bbox_inches="tight", pad_inches=0.04)
@@ -455,8 +462,9 @@ class MarkdownText(tk.Text):
 class ResultWindow(tk.Toplevel):
     def __init__(self, root, image):
         super().__init__(root)
-        self.title("Gemini answer")
+        self.title("Gemini Answer")
         self.geometry("780x660")
+        self.configure(bg=RESULT_BG)
         self.image = image
         self.raw = ""
         self.results = queue.Queue()
@@ -464,20 +472,37 @@ class ResultWindow(tk.Toplevel):
         thumb = image.copy()
         thumb.thumbnail((740, 140))
         self._thumb = ImageTk.PhotoImage(thumb, master=self)
-        tk.Label(self, image=self._thumb, bg="#e9ecef", pady=6).pack(fill="x")
+        tk.Label(self, image=self._thumb, bg=RESULT_SURFACE, pady=6).pack(fill="x")
 
-        body = ttk.Frame(self)
+        body = tk.Frame(self, bg=RESULT_BG)
         body.pack(fill="both", expand=True)
         self.text = MarkdownText(body)
-        scroll = ttk.Scrollbar(body, command=self.text.yview)
+        scroll = tk.Scrollbar(
+            body, command=self.text.yview, bg=RESULT_CONTROL,
+            troughcolor=RESULT_BG, activebackground="#4b4b50",
+            highlightthickness=0, borderwidth=0,
+        )
         self.text.configure(yscrollcommand=scroll.set)
         scroll.pack(side="right", fill="y")
         self.text.pack(side="left", fill="both", expand=True)
 
-        bar = ttk.Frame(self, padding=6)
+        bar = tk.Frame(self, bg=RESULT_BG, padx=6, pady=6)
         bar.pack(fill="x")
-        ttk.Button(bar, text="Copy answer", command=self.copy).pack(side="left")
-        ttk.Button(bar, text="Close", command=self.destroy).pack(side="right")
+        button_options = {
+            "bg": RESULT_CONTROL,
+            "fg": RESULT_FG,
+            "activebackground": "#4b4b50",
+            "activeforeground": "#ffffff",
+            "relief": "flat",
+            "borderwidth": 0,
+            "highlightthickness": 0,
+            "padx": 12,
+            "pady": 6,
+        }
+        tk.Button(bar, text="Copy answer", command=self.copy,
+                  **button_options).pack(side="left", padx=4, pady=2)
+        tk.Button(bar, text="Close", command=self.destroy,
+                  **button_options).pack(side="right", padx=4, pady=2)
         self.bind("<Escape>", lambda e: self.destroy())
 
         self.set_text("⏳ Asking Gemini…")
