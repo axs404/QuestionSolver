@@ -15,8 +15,8 @@ Run (leave it running in a terminal)
     python screen_qa.py --now      # also capture immediately on start
 
 Hotkeys (pynput syntax, override with environment variables)
-    HOTKEY       default "<ctrl>+<alt>+g"   -> start a capture
-    QUIT_HOTKEY  default "<ctrl>+<alt>+x"   -> quit the program
+    HOTKEY       default "<alt>+g"   -> start a capture
+    QUIT_HOTKEY  default "<alt>+x"   -> quit the program
 
 Other environment variables
     GEMINI_MODEL     default "gemini-3.8-flash"
@@ -51,8 +51,8 @@ except ImportError as exc:
 matplotlib.rcParams["mathtext.fontset"] = os.environ.get("MATH_FONTSET", "dejavusans")
 
 MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
-HOTKEY = os.environ.get("HOTKEY", "<ctrl>+<alt>+g")
-QUIT_HOTKEY = os.environ.get("QUIT_HOTKEY", "<ctrl>+<alt>+x")
+HOTKEY = os.environ.get("HOTKEY", "<alt>+g")
+QUIT_HOTKEY = os.environ.get("QUIT_HOTKEY", "<alt>+x")
 
 # PROMPT = (
 #     "The image is a screenshot containing a question (possibly with answer options, "
