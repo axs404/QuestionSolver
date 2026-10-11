@@ -513,6 +513,96 @@ class MarkdownText(tk.Text):
         self.configure(state="disabled")
 
 
+class DarkScrollbar(tk.Canvas):
+    def __init__(self, master, command):
+        super().__init__(
+            master,
+            width=12,
+            bg=RESULT_SURFACE,
+            highlightthickness=0,
+            borderwidth=0,
+            takefocus=True,
+        )
+        self.command = command
+        self.first = 0.0
+        self.last = 1.0
+        self._thumb_top = 0
+        self._thumb_bottom = 0
+        self._drag_offset = None
+        self._hovered = False
+
+        self.bind("<Configure>", self._draw)
+        self.bind("<Button-1>", self._on_press)
+        self.bind("<B1-Motion>", self._on_drag)
+        self.bind("<ButtonRelease-1>", self._on_release)
+        self.bind("<Enter>", self._on_enter)
+        self.bind("<Leave>", self._on_leave)
+        self.bind("<MouseWheel>", self._on_mousewheel)
+        self.bind("<Up>", lambda *_: self._scroll(-1, "units"))
+        self.bind("<Down>", lambda *_: self._scroll(1, "units"))
+        self.bind("<Prior>", lambda *_: self._scroll(-1, "pages"))
+        self.bind("<Next>", lambda *_: self._scroll(1, "pages"))
+        self.bind("<Home>", lambda *_: self.command("moveto", 0))
+        self.bind("<End>", lambda *_: self.command("moveto", 1))
+
+    def set(self, first, last):
+        self.first = float(first)
+        self.last = float(last)
+        self._draw()
+
+    def _draw(self, *_event):
+        del _event
+        height = self.winfo_height()
+        self.delete("all")
+        self._thumb_top = int(self.first * height)
+        self._thumb_bottom = max(
+            self._thumb_top + 24, int(self.last * height)
+        )
+        self._thumb_bottom = min(height, self._thumb_bottom)
+        color = "#66666d" if self._hovered else "#4a4a50"
+        self.create_rectangle(
+            3, self._thumb_top, 9, self._thumb_bottom,
+            fill=color, outline=color,
+        )
+
+    def _scroll(self, amount, unit):
+        self.command("scroll", amount, unit)
+        return "break"
+
+    def _on_press(self, event):
+        self.focus_set()
+        if self._thumb_top <= event.y <= self._thumb_bottom:
+            self._drag_offset = event.y - self._thumb_top
+        else:
+            direction = -1 if event.y < self._thumb_top else 1
+            self._scroll(direction, "pages")
+
+    def _on_drag(self, event):
+        if self._drag_offset is None:
+            return
+        height = max(1, self.winfo_height())
+        top = max(0, min(height, event.y - self._drag_offset))
+        self.command("moveto", top / height)
+
+    def _on_release(self, *_event):
+        del _event
+        self._drag_offset = None
+
+    def _on_enter(self, *_event):
+        del _event
+        self._hovered = True
+        self._draw()
+
+    def _on_leave(self, *_event):
+        del _event
+        self._hovered = False
+        self._draw()
+
+    def _on_mousewheel(self, event):
+        amount = -1 if event.delta > 0 else 1
+        return self._scroll(amount, "units")
+
+
 class ResultWindow(tk.Toplevel):
     def __init__(self, root, image):
         super().__init__(root)
@@ -531,19 +621,7 @@ class ResultWindow(tk.Toplevel):
         body = tk.Frame(self, bg=RESULT_BG)
         body.pack(fill="both", expand=True)
         self.text = MarkdownText(body)
-        scroll = tk.Scrollbar(
-            body,
-            command=self.text.yview,
-            bg=RESULT_CONTROL,
-            troughcolor=RESULT_SURFACE,
-            activebackground="#4b4b50",
-            highlightbackground=RESULT_BG,
-            highlightcolor=RESULT_BG,
-            highlightthickness=0,
-            borderwidth=0,
-            relief="flat",
-            width=12,
-        )
+        scroll = DarkScrollbar(body, command=self.text.yview)
         self.text.configure(yscrollcommand=scroll.set)
         scroll.pack(side="right", fill="y")
         self.text.pack(side="left", fill="both", expand=True)
