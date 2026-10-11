@@ -43,8 +43,10 @@ try:
     from google import genai
     from google.genai import types
 except ImportError as exc:
-    sys.exit(f"Missing dependency ({exc.name}). Run:\n"
-             "  pip install google-genai pillow matplotlib pynput")
+    sys.exit(
+        f"Missing dependency ({exc.name}). Run:\n"
+        "  pip install google-genai pillow matplotlib pynput"
+    )
 
 matplotlib.rcParams["mathtext.fontset"] = os.environ.get("MATH_FONTSET", "dejavusans")
 
@@ -82,20 +84,27 @@ def select_region(root, cancel_flag=None):
     dimmed = ImageEnhance.Brightness(full.resize((sw, sh))).enhance(0.45)
     photo = ImageTk.PhotoImage(dimmed, master=top)
 
-    canvas = tk.Canvas(top, width=sw, height=sh, highlightthickness=0,
-                       cursor="crosshair", bg="black")
+    canvas = tk.Canvas(
+        top, width=sw, height=sh, highlightthickness=0, cursor="crosshair", bg="black"
+    )
     canvas.pack(fill="both", expand=True)
     canvas.photo = photo  # keep a reference
     canvas.create_image(0, 0, image=photo, anchor="nw")
-    canvas.create_text(sw // 2, 30, fill="white", font=("TkDefaultFont", 16),
-                       text="Drag to select the question   •   Esc to cancel")
+    canvas.create_text(
+        sw // 2,
+        30,
+        fill="white",
+        font=("TkDefaultFont", 16),
+        text="Drag to select the question   •   Esc to cancel",
+    )
 
     state = {"x0": 0, "y0": 0, "rect": None, "box": None}
 
     def on_press(e):
         state["x0"], state["y0"] = e.x, e.y
-        state["rect"] = canvas.create_rectangle(e.x, e.y, e.x, e.y,
-                                                outline="#00e0ff", width=2)
+        state["rect"] = canvas.create_rectangle(
+            e.x, e.y, e.x, e.y, outline="#00e0ff", width=2
+        )
 
     def on_drag(e):
         if state["rect"]:
@@ -177,8 +186,11 @@ def _configs():
     out = []
     if level not in ("", "default"):
         try:
-            out.append(types.GenerateContentConfig(
-                thinking_config=types.ThinkingConfig(thinking_level=level)))
+            out.append(
+                types.GenerateContentConfig(
+                    thinking_config=types.ThinkingConfig(thinking_level=level)
+                )
+            )
         except Exception:
             pass
     out.append(None)
@@ -202,7 +214,7 @@ def stream_gemini(image):
             return
         except Exception:
             if got_text or cfg is None:
-                raise          # real error, or last attempt: report it
+                raise  # real error, or last attempt: report it
             # otherwise retry once without the thinking config
 
 
@@ -213,7 +225,9 @@ class UnsupportedTeX(Exception):
     pass
 
 
-_WRAP_ENVS = r"align\*?|aligned|equation\*?|gather\*?|gathered|eqnarray\*?|multline\*?|split"
+_WRAP_ENVS = (
+    r"align\*?|aligned|equation\*?|gather\*?|gathered|eqnarray\*?|multline\*?|split"
+)
 
 
 def prep_tex(tex):
@@ -221,13 +235,20 @@ def prep_tex(tex):
     Returns a list of lines (multi-line align/gather blocks become several)."""
     tex = tex.strip()
     tex = re.sub(r"\\(?:begin|end)\{(?:%s)\}" % _WRAP_ENVS, "", tex)
-    tex = re.sub(r"\\(?:label|tag)\{[^{}]*\}|\\nonumber|\\notag|\\displaystyle|"
-                 r"\\textstyle|\\limits", "", tex)
+    tex = re.sub(
+        r"\\(?:label|tag)\{[^{}]*\}|\\nonumber|\\notag|\\displaystyle|"
+        r"\\textstyle|\\limits",
+        "",
+        tex,
+    )
     tex = re.sub(r"\\[dt]frac", r"\\frac", tex)
-    tex = re.sub(r"\\(?:text|textrm|textit|textbf|mbox|operatorname)\{([^{}]*)\}",
-                 lambda m: r"\mathrm{" + m.group(1).replace(" ", r"\ ") + "}", tex)
+    tex = re.sub(
+        r"\\(?:text|textrm|textit|textbf|mbox|operatorname)\{([^{}]*)\}",
+        lambda m: r"\mathrm{" + m.group(1).replace(" ", r"\ ") + "}",
+        tex,
+    )
     tex = tex.replace(r"\&", "\x00").replace("&", " ").replace("\x00", r"\&")
-    if re.search(r"\\begin\{", tex):          # matrices, cases, arrays...
+    if re.search(r"\\begin\{", tex):  # matrices, cases, arrays...
         raise UnsupportedTeX(tex)
     lines = [ln.strip() for ln in re.split(r"\\\\", tex)]
     lines = [ln for ln in lines if ln]
@@ -253,7 +274,7 @@ def split_blocks(md):
             yield "code", "\n".join(buf)
             continue
 
-        if s.startswith("$$") and s.count("$$") < 2:        # multi-line $$ ... $$
+        if s.startswith("$$") and s.count("$$") < 2:  # multi-line $$ ... $$
             buf, i = [s[2:]], i + 1
             while i < len(lines):
                 t = lines[i].strip()
@@ -269,7 +290,7 @@ def split_blocks(md):
             i += 1
             continue
 
-        if s.startswith("\\[") and not s.endswith("\\]"):    # multi-line \[ ... \]
+        if s.startswith("\\[") and not s.endswith("\\]"):  # multi-line \[ ... \]
             buf, i = [s[2:]], i + 1
             while i < len(lines):
                 t = lines[i].strip()
@@ -286,7 +307,7 @@ def split_blocks(md):
             continue
 
         m = re.match(r"\\begin\{(%s)\}" % _WRAP_ENVS, s)
-        if m:                                               # bare \begin{align} ...
+        if m:  # bare \begin{align} ...
             buf, end = [s], "\\end{%s}" % m.group(1)
             i += 1
             while end not in buf[-1] and i < len(lines):
@@ -309,32 +330,47 @@ RESULT_FG = "#d4d4d4"
 RESULT_MUTED = "#9da5b4"
 
 INLINE = re.compile(
-    r"(\*\*\*.+?\*\*\*"                                   # bold italic
-    r"|\*\*.+?\*\*"                                       # bold
-    r"|`[^`]+`"                                           # inline code
-    r"|\$\$.+?\$\$"                                       # $$ inline $$
-    r"|(?<![\\$\w])\$(?!\s)[^$\n]+?(?<!\s)\$(?![\d$])"    # $ math $ (not currency)
-    r"|\\\(.+?\\\)"                                       # \( math \)
-    r"|\*[^*\s][^*]*?\*)"                                 # italic
+    r"(\*\*\*.+?\*\*\*"  # bold italic
+    r"|\*\*.+?\*\*"  # bold
+    r"|`[^`]+`"  # inline code
+    r"|\$\$.+?\$\$"  # $$ inline $$
+    r"|(?<![\\$\w])\$(?!\s)[^$\n]+?(?<!\s)\$(?![\d$])"  # $ math $ (not currency)
+    r"|\\\(.+?\\\)"  # \( math \)
+    r"|\*[^*\s][^*]*?\*)"  # italic
 )
 
 
 class MarkdownText(tk.Text):
     def __init__(self, master, **kw):
-        super().__init__(master, wrap="word", padx=16, pady=12, borderwidth=0,
-                         highlightthickness=0, bg=RESULT_BG, fg=RESULT_FG,
-                         selectbackground="#264f78", selectforeground="#ffffff",
-                         spacing1=2, spacing3=4, **kw)
+        super().__init__(
+            master,
+            wrap="word",
+            padx=16,
+            pady=12,
+            borderwidth=0,
+            highlightthickness=0,
+            bg=RESULT_BG,
+            fg=RESULT_FG,
+            selectbackground="#264f78",
+            selectforeground="#ffffff",
+            spacing1=2,
+            spacing3=4,
+            **kw,
+        )
         self.dpi = max(72.0, min(200.0, float(master.winfo_fpixels("1i"))))
         self._math_cache = {}
 
         base = tkfont.nametofont("TkDefaultFont").copy()
         base.configure(size=12)
         self.f_base = base
-        self.f_bold = base.copy(); self.f_bold.configure(weight="bold")
-        self.f_ital = base.copy(); self.f_ital.configure(slant="italic")
-        self.f_bi = base.copy(); self.f_bi.configure(weight="bold", slant="italic")
-        self.f_mono = tkfont.nametofont("TkFixedFont").copy(); self.f_mono.configure(size=11)
+        self.f_bold = base.copy()
+        self.f_bold.configure(weight="bold")
+        self.f_ital = base.copy()
+        self.f_ital.configure(slant="italic")
+        self.f_bi = base.copy()
+        self.f_bi.configure(weight="bold", slant="italic")
+        self.f_mono = tkfont.nametofont("TkFixedFont").copy()
+        self.f_mono.configure(size=11)
         self.f_h = {lvl: base.copy() for lvl in (1, 2, 3)}
         for lvl, size in ((1, 20), (2, 17), (3, 14)):
             self.f_h[lvl].configure(size=size, weight="bold")
@@ -343,10 +379,19 @@ class MarkdownText(tk.Text):
         self.tag_configure("bold", font=self.f_bold)
         self.tag_configure("italic", font=self.f_ital)
         self.tag_configure("bolditalic", font=self.f_bi)
-        self.tag_configure("code", font=self.f_mono, background=RESULT_CONTROL,
-                           foreground="#ce9178")
-        self.tag_configure("codeblock", font=self.f_mono, background=RESULT_SURFACE,
-                           lmargin1=16, lmargin2=16, rmargin=16, spacing1=0, spacing3=0)
+        self.tag_configure(
+            "code", font=self.f_mono, background=RESULT_CONTROL, foreground="#ce9178"
+        )
+        self.tag_configure(
+            "codeblock",
+            font=self.f_mono,
+            background=RESULT_SURFACE,
+            lmargin1=16,
+            lmargin2=16,
+            rmargin=16,
+            spacing1=0,
+            spacing3=0,
+        )
         self.tag_configure("table", font=self.f_mono, lmargin1=8, lmargin2=8)
         self.tag_configure("quote", foreground=RESULT_MUTED, lmargin1=18, lmargin2=18)
         self.tag_configure("hr", foreground="#6e7681")
@@ -354,7 +399,9 @@ class MarkdownText(tk.Text):
         for lvl in (1, 2, 3):
             self.tag_configure(f"h{lvl}", font=self.f_h[lvl], spacing1=10, spacing3=6)
         for lvl in range(6):
-            self.tag_configure(f"list{lvl}", lmargin1=14 + 22 * lvl, lmargin2=34 + 22 * lvl)
+            self.tag_configure(
+                f"list{lvl}", lmargin1=14 + 22 * lvl, lmargin2=34 + 22 * lvl
+            )
 
     # -- LaTeX -> image ------------------------------------------------------ #
     def _math_image(self, tex, display):
@@ -364,8 +411,14 @@ class MarkdownText(tk.Text):
             FigureCanvasAgg(fig)
             fig.text(0, 0, f"${tex}$", fontsize=15 if display else 12, color=RESULT_FG)
             buf = io.BytesIO()
-            fig.savefig(buf, format="png", dpi=self.dpi, transparent=True,
-                        bbox_inches="tight", pad_inches=0.04)
+            fig.savefig(
+                buf,
+                format="png",
+                dpi=self.dpi,
+                transparent=True,
+                bbox_inches="tight",
+                pad_inches=0.04,
+            )
             buf.seek(0)
             img = Image.open(buf).convert("RGBA")
             self._math_cache[key] = ImageTk.PhotoImage(img, master=self)
@@ -376,10 +429,11 @@ class MarkdownText(tk.Text):
             lines = prep_tex(tex)
             if len(lines) != 1:
                 raise UnsupportedTeX(tex)
-            self.image_create("end", image=self._math_image(lines[0], False),
-                              align="center", padx=2)
+            self.image_create(
+                "end", image=self._math_image(lines[0], False), align="center", padx=2
+            )
         except Exception:
-            self.insert("end", tex, tuple(tags) + ("code",))   # show raw TeX
+            self.insert("end", tex, tuple(tags) + ("code",))  # show raw TeX
 
     def _display_math(self, tex):
         try:
@@ -397,7 +451,7 @@ class MarkdownText(tk.Text):
     def _inline(self, text, tags=()):
         pos = 0
         for m in INLINE.finditer(text):
-            self.insert("end", text[pos:m.start()], tags)
+            self.insert("end", text[pos : m.start()], tags)
             tok = m.group(0)
             if tok.startswith("***"):
                 self._inline(tok[3:-3], tags + ("bolditalic",))
@@ -449,7 +503,7 @@ class MarkdownText(tk.Text):
             elif line.startswith(">"):
                 self._inline(line.lstrip("> ").rstrip(), ("quote",))
             elif line.lstrip().startswith("|"):
-                if re.match(r"^\s*\|[\s:|-]+\|?\s*$", line):   # skip |---| rows
+                if re.match(r"^\s*\|[\s:|-]+\|?\s*$", line):  # skip |---| rows
                     continue
                 self.insert("end", line.strip(), "table")
             else:
@@ -478,9 +532,17 @@ class ResultWindow(tk.Toplevel):
         body.pack(fill="both", expand=True)
         self.text = MarkdownText(body)
         scroll = tk.Scrollbar(
-            body, command=self.text.yview, bg=RESULT_CONTROL,
-            troughcolor=RESULT_BG, activebackground="#4b4b50",
-            highlightthickness=0, borderwidth=0,
+            body,
+            command=self.text.yview,
+            bg=RESULT_CONTROL,
+            troughcolor=RESULT_SURFACE,
+            activebackground="#4b4b50",
+            highlightbackground=RESULT_BG,
+            highlightcolor=RESULT_BG,
+            highlightthickness=0,
+            borderwidth=0,
+            relief="flat",
+            width=12,
         )
         self.text.configure(yscrollcommand=scroll.set)
         scroll.pack(side="right", fill="y")
@@ -499,10 +561,12 @@ class ResultWindow(tk.Toplevel):
             "padx": 12,
             "pady": 6,
         }
-        tk.Button(bar, text="Copy answer", command=self.copy,
-                  **button_options).pack(side="left", padx=4, pady=2)
-        tk.Button(bar, text="Close", command=self.destroy,
-                  **button_options).pack(side="right", padx=4, pady=2)
+        tk.Button(bar, text="Copy answer", command=self.copy, **button_options).pack(
+            side="left", padx=4, pady=2
+        )
+        tk.Button(bar, text="Close", command=self.destroy, **button_options).pack(
+            side="right", padx=4, pady=2
+        )
         self.bind("<Escape>", lambda e: self.destroy())
 
         self.set_text("⏳ Asking Gemini…")
@@ -513,18 +577,23 @@ class ResultWindow(tk.Toplevel):
 
     def start(self):
         """Stream the API reply in a thread so the UI never freezes."""
+
         def worker():
             text = ""
             try:
                 for piece in stream_gemini(self.image):
                     text += piece
                     self.results.put(("chunk", text))
-                self.results.put(("done", text or "(The model returned an empty response.)"))
+                self.results.put(
+                    ("done", text or "(The model returned an empty response.)")
+                )
             except Exception as exc:
                 msg = str(exc)
                 if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
                     msg += "\n\nRate/quota limit reached. Wait a bit and try again."
-                self.results.put(("done", (text + "\n\n" if text else "") + f"**Error**\n\n{msg}"))
+                self.results.put(
+                    ("done", (text + "\n\n" if text else "") + f"**Error**\n\n{msg}")
+                )
 
         threading.Thread(target=worker, daemon=True).start()
         self._poll()
@@ -549,7 +618,7 @@ class ResultWindow(tk.Toplevel):
         first = self.text.yview()[0]
         self.text.render(md)
         if first > 0:
-            self.text.yview_moveto(first)   # keep the user's scroll position
+            self.text.yview_moveto(first)  # keep the user's scroll position
 
     def copy(self):
         self.clipboard_clear()
@@ -560,9 +629,10 @@ class ResultWindow(tk.Toplevel):
 # Main: hidden Tk root + global hotkey listener
 # --------------------------------------------------------------------------- #
 def main():
-    if sys.platform == "win32":          # sharp, correctly-scaled screenshots
+    if sys.platform == "win32":  # sharp, correctly-scaled screenshots
         try:
             import ctypes
+
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
         except Exception:
             pass
@@ -595,7 +665,7 @@ def main():
                 cmd = commands.get_nowait()
                 if cmd == "capture" and not busy["capturing"]:
                     busy["capturing"] = True
-                    root.after(150, do_capture)       # let the hotkey keys release
+                    root.after(150, do_capture)  # let the hotkey keys release
                 elif cmd == "quit":
                     root.destroy()
                     return
@@ -604,10 +674,12 @@ def main():
         root.after(100, pump)
 
     # pynput runs callbacks in its own thread -> hand work to Tk via a queue
-    listener = keyboard.GlobalHotKeys({
-        HOTKEY: lambda: commands.put("capture"),
-        QUIT_HOTKEY: lambda: commands.put("quit"),
-    })
+    listener = keyboard.GlobalHotKeys(
+        {
+            HOTKEY: lambda: commands.put("capture"),
+            QUIT_HOTKEY: lambda: commands.put("quit"),
+        }
+    )
     listener.start()
 
     def on_key_press(key):
