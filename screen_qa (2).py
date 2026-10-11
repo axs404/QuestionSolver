@@ -1,28 +1,3 @@
-#!/usr/bin/env python3
-"""
-screen_qa.py - Press a global hotkey, drag a box around a question on your screen,
-and get Gemini's answer in a new window, with Markdown AND LaTeX math rendered.
-
-Setup
------
-    pip install google-genai pillow matplotlib pynput
-    export GEMINI_API_KEY="your-key"      # free key: https://aistudio.google.com/apikey
-    # Windows (PowerShell):  $env:GEMINI_API_KEY="your-key"
-
-Run (leave it running in a terminal)
----
-    python screen_qa.py            # wait for the hotkey
-    python screen_qa.py --now      # also capture immediately on start
-
-Hotkeys (pynput syntax, override with environment variables)
-    HOTKEY       default "<ctrl>+<alt>+g"   -> start a capture
-    QUIT_HOTKEY  default "<ctrl>+<alt>+x"   -> quit the program
-
-Other environment variables
-    GEMINI_MODEL     default "gemini-3.8-flash"
-    MATH_FONTSET     default "dejavusans" (also: cm, stix, stixsans, dejavuserif)
-"""
-
 import io
 import os
 import queue

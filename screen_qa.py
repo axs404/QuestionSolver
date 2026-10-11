@@ -1,22 +1,3 @@
-#!/usr/bin/env python3
-"""
-screen_qa.py - Select a region of your screen containing a question, send it to
-Google Gemini, and show the formatted answer in a new window.
-
-Setup
------
-    pip install google-genai pillow
-    export GEMINI_API_KEY="your-key"      # free key: https://aistudio.google.com/apikey
-    # Windows (PowerShell):  $env:GEMINI_API_KEY="your-key"
-
-Run
----
-    python screen_qa.py
-
-Optional environment variables
-    GEMINI_MODEL   model name (default: gemini-2.5-flash)
-"""
-
 import os
 import queue
 import re
