@@ -28,17 +28,6 @@ MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash")
 HOTKEY = os.environ.get("HOTKEY", "<alt>+g")
 QUIT_HOTKEY = os.environ.get("QUIT_HOTKEY", "<alt>+x")
 
-# PROMPT = (
-#     "The image is a screenshot containing a question (possibly with answer options, "
-#     "code or equations). Read it carefully and answer it. Give the answer first, then "
-#     "a SHORT explanation (a few sentences at most). Use Markdown for formatting. Write ALL math in LaTeX: "
-#     "$...$ for inline and $$...$$ on their own lines for display equations. Use only "
-#     "basic commands (\\frac, \\sqrt, ^, _, \\sum, \\int, \\lim, Greek letters, "
-#     "\\left( \\right), \\mathbb, \\mathrm). Do NOT use matrix/cases/array environments; "
-#     "for those, use a code block with plain text instead."
-# )
-
-
 # --------------------------------------------------------------------------- #
 # Step 1: screenshot of a user-selected region
 # --------------------------------------------------------------------------- #
@@ -55,8 +44,8 @@ def select_region(root, cancel_flag=None):
     sw, sh = top.winfo_screenwidth(), top.winfo_screenheight()
     sx, sy = full.width / sw, full.height / sh  # handles HiDPI scaling
 
-    dimmed = ImageEnhance.Brightness(full.resize((sw, sh))).enhance(0.45)
-    photo = ImageTk.PhotoImage(dimmed, master=top)
+    # dimmed = ImageEnhance.Brightness(full.resize((sw, sh))).enhance(0.45)
+    photo = ImageTk.PhotoImage(full.resize((sw, sh)), master=top)
 
     canvas = tk.Canvas(
         top, width=sw, height=sh, highlightthickness=0, cursor="crosshair", bg="black"
@@ -69,7 +58,7 @@ def select_region(root, cancel_flag=None):
         30,
         fill="white",
         font=("TkDefaultFont", 16),
-        text="Drag to select the question   •   Esc to cancel",
+        # text="Drag to select the question   •   Esc to cancel",
     )
 
     state = {"x0": 0, "y0": 0, "rect": None, "box": None}
@@ -156,7 +145,7 @@ def prepare_image(image):
 def _configs():
     """Try a low 'thinking' level first (much faster); fall back to defaults if
     the model rejects it. Set THINKING=default to skip, or THINKING=high etc."""
-    level = os.environ.get("THINKING", "MINIMAL").strip().lower()
+    level = os.environ.get("THINKING", "MINIMAL").strip()
     out = []
     if level not in ("", "default"):
         try:
